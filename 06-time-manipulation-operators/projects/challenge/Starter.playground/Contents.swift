@@ -4,7 +4,21 @@ import Foundation
 // A subject you get values from
 let subject = PassthroughSubject<Int, Never>()
 
-<#Add your code here#>
+let stringPublisher = subject
+/// Group data by BATCHES of 0.5 secconds and turn them into string
+  .collect(.byTime(DispatchQueue.main, .seconds(0.5)))
+  .map { array in String(array.map { Character(Unicode.Scalar($0)!) }) }
+
+/// If there is a pause longer than 0.9 seconds in the feed, print 👏🏻
+let spacesPublisher = subject
+  .measureInterval(using: DispatchQueue.main)
+  .map { $0 > 0.9 ? "👏🏻" : "" }
+
+/// print
+let subscription = stringPublisher
+  .merge(with: spacesPublisher)
+  .filter { !$0.isEmpty }
+  .sink { print($0) }
 
 // Let's roll!
 startFeeding(subject: subject)
