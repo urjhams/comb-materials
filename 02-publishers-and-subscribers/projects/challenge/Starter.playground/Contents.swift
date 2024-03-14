@@ -19,16 +19,32 @@ example(of: "Create a Blackjack card dealer") {
     }
     
     // Add code to update dealtHand here
-    
+    switch hand.points {
+    case let points where points > 21:
+      dealtHand.send(completion: .failure(.busted))
+    default:
+      dealtHand.send(hand)
+    }
   }
   
   // Add subscription to dealtHand here
-  
+  let cancelable = dealtHand.sink { completion in
+    switch completion {
+    case .finished:
+      break
+    case .failure(let error):
+      print(error)
+    }
+  } receiveValue: { value in
+    print("\(value.cardString) - \(value.points)")
+  }
   
   deal(3)
+  
+  cancelable.cancel()
 }
 
-/// Copyright (c) 2023 Kodeco Inc.
+/// Copyright (c) 2021 Razeware LLC
 ///
 /// Permission is hereby granted, free of charge, to any person obtaining a copy
 /// of this software and associated documentation files (the "Software"), to deal
@@ -47,10 +63,6 @@ example(of: "Create a Blackjack card dealer") {
 /// or information technology.  Permission for such use, copying, modification,
 /// merger, publication, distribution, sublicensing, creation of derivative works,
 /// or sale is expressly withheld.
-///
-/// This project and source code may use libraries or frameworks that are
-/// released under various Open-Source licenses. Use of those libraries and
-/// frameworks are governed by their own individual licenses.
 ///
 /// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 /// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,

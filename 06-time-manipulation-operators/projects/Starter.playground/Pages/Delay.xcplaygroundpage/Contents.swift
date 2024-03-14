@@ -2,11 +2,38 @@ import Combine
 import SwiftUI
 import PlaygroundSupport
 
-<# Add your code here #>
+let valuesPerSecond = 1.0
+let delayInSeconds  = 2.0
+
+let sourcePublisher = PassthroughSubject<Date, Never>()
+
+let delayedPublisher = sourcePublisher
+  .delay(for: .seconds(delayInSeconds), scheduler: DispatchQueue.main)
+
+let subscriptions = Timer
+  .publish(every: 1.0 / valuesPerSecond, on: .main, in: .common)
+  .autoconnect()
+  .subscribe(sourcePublisher)
+
+let sourceTimeLine = TimelineView(title: "Emitted values (\(valuesPerSecond) per sec.):")
+
+let delayedTimeLine = TimelineView(title: "Delayed values (with a \(delayInSeconds)s delay):")
+
+let view = VStack(spacing: 50) {
+  sourceTimeLine
+  delayedTimeLine
+}
+
+PlaygroundPage.current.liveView = UIHostingController(
+  rootView: view.frame(width: 375, height: 600)
+)
+
+sourcePublisher.displayEvents(in: sourceTimeLine)
+delayedPublisher.displayEvents(in: delayedTimeLine)
 
 //: [Next](@next)
 /*:
- Copyright (c) 2023 Kodeco Inc.
+ Copyright (c) 2021 Razeware LLC
 
  Permission is hereby granted, free of charge, to any person obtaining a copy
  of this software and associated documentation files (the "Software"), to deal
@@ -26,10 +53,6 @@ import PlaygroundSupport
  merger, publication, distribution, sublicensing, creation of derivative works,
  or sale is expressly withheld.
 
- This project and source code may use libraries or frameworks that are
- released under various Open-Source licenses. Use of those libraries and
- frameworks are governed by their own individual licenses.
- 
  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -38,3 +61,4 @@ import PlaygroundSupport
  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  THE SOFTWARE.
  */
+

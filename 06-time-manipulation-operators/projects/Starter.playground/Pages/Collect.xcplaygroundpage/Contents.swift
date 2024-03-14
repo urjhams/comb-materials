@@ -2,22 +2,68 @@ import Combine
 import SwiftUI
 import PlaygroundSupport
 
-<# Add your code here #>
+let valuesPerSecond = 1.0
+let collectTimeStride = 4
+let collectMaxCount = 2
 
+let sourcePublisher = PassthroughSubject<Date, Never>()
+
+let collectedPublisher = sourcePublisher
+  .collect(.byTime(DispatchQueue.main, .seconds(collectTimeStride)))
+  .flatMap(\.publisher)
+
+let collectedPublisher2 = sourcePublisher
+  .collect(
+    .byTimeOrCount(DispatchQueue.main, .seconds(collectTimeStride), collectMaxCount)
+  )
+  .flatMap(\.publisher)
+
+let subscription = Timer
+  .publish(every: 1.0 / valuesPerSecond, on: .main, in: .common)
+  .autoconnect()
+  .subscribe(sourcePublisher)
+
+let sourceTimeline = TimelineView(title: "Emitted values:")
+let collectedTimeline = TimelineView(
+  title: "Collected values (every \(collectTimeStride)s):"
+)
+
+let collectedTimeline2 = TimelineView(
+  title: "Collected values (at most \(collectMaxCount) every \(collectTimeStride)s):"
+)
+
+let view = VStack(spacing: 40) {
+  VStack {
+    sourceTimeline
+    Spacer()
+    collectedTimeline
+    Spacer()
+    collectedTimeline2
+  }
+  .padding([.top, .bottom])
+}
+
+PlaygroundPage.current.liveView = UIHostingController(
+  rootView: view.frame(width: 375, height: 600)
+)
+
+sourcePublisher.displayEvents(in: sourceTimeline)
+collectedPublisher.displayEvents(in: collectedTimeline)
+collectedPublisher2.displayEvents(in: collectedTimeline2)
 //: [Next](@next)
 /*:
- Copyright (c) 2023 Kodeco Inc.
-
+ Copyright (c) 2021 Razeware LLC
+ 
  Permission is hereby granted, free of charge, to any person obtaining a copy
  of this software and associated documentation files (the "Software"), to deal
  in the Software without restriction, including without limitation the rights
  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
  copies of the Software, and to permit persons to whom the Software is
  furnished to do so, subject to the following conditions:
-
+ 
  The above copyright notice and this permission notice shall be included in
  all copies or substantial portions of the Software.
-
+ 
  Notwithstanding the foregoing, you may not use, copy, modify, merge, publish,
  distribute, sublicense, create a derivative work, and/or sell copies of the
  Software in any work that is designed, intended, or marketed for pedagogical or
@@ -25,10 +71,6 @@ import PlaygroundSupport
  or information technology.  Permission for such use, copying, modification,
  merger, publication, distribution, sublicensing, creation of derivative works,
  or sale is expressly withheld.
-
- This project and source code may use libraries or frameworks that are
- released under various Open-Source licenses. Use of those libraries and
- frameworks are governed by their own individual licenses.
  
  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
@@ -38,3 +80,4 @@ import PlaygroundSupport
  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  THE SOFTWARE.
  */
+

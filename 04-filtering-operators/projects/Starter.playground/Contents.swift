@@ -3,36 +3,152 @@ import Combine
 
 var subscriptions = Set<AnyCancellable>()
 
-<#Add your code here#>
+example(of: "prefix(untilOutputFrom:)") {
+  let isReady = PassthroughSubject<Void, Never>()
+  let taps = PassthroughSubject<Int, Never>()
+  
+  /// using prefix, we receive the emitted values from taps until isReady is sent
+  taps
+    .prefix(untilOutputFrom: isReady)
+    .sink { print($0) }
+    .store(in: &subscriptions)
+  
+  (1...5).forEach {
+    taps.send($0)
+    
+    if $0 == 3 {
+      isReady.send()
+    }
+  }
+}
 
-/// Copyright (c) 2023 Kodeco Inc.
-///
-/// Permission is hereby granted, free of charge, to any person obtaining a copy
-/// of this software and associated documentation files (the "Software"), to deal
-/// in the Software without restriction, including without limitation the rights
-/// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-/// copies of the Software, and to permit persons to whom the Software is
-/// furnished to do so, subject to the following conditions:
-///
-/// The above copyright notice and this permission notice shall be included in
-/// all copies or substantial portions of the Software.
-///
-/// Notwithstanding the foregoing, you may not use, copy, modify, merge, publish,
-/// distribute, sublicense, create a derivative work, and/or sell copies of the
-/// Software in any work that is designed, intended, or marketed for pedagogical or
-/// instructional purposes related to programming, coding, application development,
-/// or information technology.  Permission for such use, copying, modification,
-/// merger, publication, distribution, sublicensing, creation of derivative works,
-/// or sale is expressly withheld.
-///
-/// This project and source code may use libraries or frameworks that are
-/// released under various Open-Source licenses. Use of those libraries and
-/// frameworks are governed by their own individual licenses.
-///
-/// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-/// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-/// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-/// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-/// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-/// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-/// THE SOFTWARE.
+example(of: "prefix(while:)") {
+  let numbers = (1...10).publisher
+  
+  numbers
+    .prefix { $0 < 5 }
+    .sink { print("Completed with:", $0) } receiveValue: { print($0) }
+    .store(in: &subscriptions)
+}
+
+example(of: "prefix") {
+  let numbers = (1...10).publisher
+  
+  numbers
+    .prefix(2)
+    .sink { print("Completed with:", $0) } receiveValue: { print($0) }
+    .store(in: &subscriptions)
+}
+
+example(of: "drop(untilOutputFrom:)") {
+  let isReady = PassthroughSubject<Void, Never>()
+  let taps = PassthroughSubject<Int, Never>()
+  
+  taps
+    .drop(untilOutputFrom: isReady)
+    .sink { print($0) }
+    .store(in: &subscriptions)
+  
+  (1...5).forEach {
+    taps.send($0)
+    
+    if $0 == 3 {
+      isReady.send()
+    }
+  }
+}
+
+example(of: "dropFist") {
+  let numbers = (1...10).publisher
+  
+  numbers
+    .dropFirst(8)
+    .sink { print($0) }
+    .store(in: &subscriptions)
+  
+  print("using drop(while:)")
+  numbers
+    .drop { $0 % 5 != 0 }
+    .sink { print($0) }
+    .store(in: &subscriptions)
+}
+
+example(of: "last(where:)") {
+  let numbers = (1...9).publisher
+  
+  numbers
+    .print("numbers")
+    .last { $0 % 2 == 0 }
+    .sink { print("Completed with:", $0) } receiveValue: { print($0) }
+    .store(in: &subscriptions)
+  
+  let subjects = PassthroughSubject<Int, Never>()
+  
+  subjects
+    .last { $0 % 2 == 0 }
+    .sink { print("Completed with:", $0) } receiveValue: { print($0) }
+    .store(in: &subscriptions)
+  
+  subjects.send(1)
+  subjects.send(2)
+  subjects.send(3)
+  subjects.send(4)
+  subjects.send(5)
+  
+  /// The  `last(where:)` require the publisher need to complete emitting values to know the last
+  /// value that match the criteria.
+  subjects.send(completion: .finished)
+}
+
+example(of: "first(where:)") {
+  let numbers = (1...9).publisher
+  
+  /// as soon as the first value is triggered, the subscription will receive cancelled
+  numbers
+    .print("numbers")
+    .first { $0 % 2 == 0 }
+    .sink { print("completed with:", $0) } receiveValue: { print($0) }
+    .store(in: &subscriptions)
+}
+
+example(of: "Ignore output") {
+  let numbers = (1...10_000).publisher
+  
+  /// Use `ignoreOutput()` to ignore all the emited values
+  numbers
+    .ignoreOutput()
+    .sink { print("Completed with:", $0) } receiveValue: { print($0) }
+    .store(in: &subscriptions)
+}
+
+example(of: "Compact map") {
+  let strings = ["a", "1.24", "3", "def", "45", "0.23"].publisher
+  
+  /// Compact map will ignore the nil value while mapping so if the string is unable to turned into a floating point
+  /// number, then it will be nil and be ignored.
+  strings
+    .compactMap(Float.init)
+    .sink { print($0) }
+    .store(in: &subscriptions)
+}
+
+example(of: "remove duplicates") {
+  let words = "hey hey there! Want to listen to mister mister ?"
+    .components(separatedBy: " ")
+    .publisher
+  
+  words
+    .removeDuplicates()
+    .sink { print($0) }
+    .store(in: &subscriptions)
+}
+
+
+example(of: "filter") {
+  let numbers = (1...10).publisher
+  
+  numbers
+    .filter { $0.isMultiple(of: 3) }
+    .sink { print("\($0) is a multiple of 3!") }
+    .store(in: &subscriptions)
+}
