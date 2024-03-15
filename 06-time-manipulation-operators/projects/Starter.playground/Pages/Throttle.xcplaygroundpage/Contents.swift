@@ -9,11 +9,7 @@ let subject = PassthroughSubject<String, Never>()
 /// The throttle only emit the first value it received from subject during each 1 second
 /// because the `latest` is `false`
 let throttled = subject
-  .throttle(
-    for: .seconds(throttleDelay),
-    scheduler: DispatchQueue.main,
-    latest: true
-  )
+  .throttle(for: .seconds(throttleDelay), scheduler: DispatchQueue.main, latest: true)
   .share()
 
 let subjectTimeline = TimelineView(title: "Emitted values")

@@ -32,9 +32,21 @@
 
 import UIKit
 import Photos
+import Combine
 
 class CollageNeueModel: ObservableObject {
   static let collageSize = CGSize(width: UIScreen.main.bounds.width, height: 200)
+  
+  private var subscriptions = Set<AnyCancellable>()
+  
+  /// Emit the user's currently selected photos for the current collage
+  private let images = CurrentValueSubject<[UIImage], Never>([])
+  
+  let updateUISubject = PassthroughSubject<Int, Never>()
+  
+  @Published var imagePreview: UIImage?
+  
+  private(set) var selectedPhotosSubject = PassthroughSubject<UIImage, Never>()
   
   // MARK: - Collage
   
@@ -42,19 +54,52 @@ class CollageNeueModel: ObservableObject {
   private(set) var lastErrorMessage = ""
 
   func bindMainView() {
-    
+    images
+      .handleEvents(receiveOutput: { [weak self] photos in
+        self?.updateUISubject.send(photos.count)
+      })
+      // convert the current image array into single collage image
+      .map { photos in UIImage.collage(images: photos, size: Self.collageSize) }
+      // use assign to bind the emitted mapped value to `imagePreview`
+      .assign(to: &$imagePreview)
   }
 
   func add() {
+    // re-allocate the subject
+    selectedPhotosSubject = PassthroughSubject<UIImage, Never>()
     
+    // create publisher from the subject and assign to `images`
+    let newPhotos = selectedPhotosSubject
+      .prefix { [unowned self] _ in images.value.count < 6 }
+      .share()
+    
+    newPhotos.map { [unowned self] newImage in
+      images.value + [newImage]
+    }
+    .assign(to: \.value, on: images)
+    .store(in: &subscriptions)
   }
 
   func clear() {
-    
+    images.send([])
   }
 
   func save() {
+    guard let image = imagePreview else {
+      return
+    }
     
+    PhotoWriter.save(image)
+      .sink { [unowned self] completion in
+        if case .failure(let error) = completion {
+          lastErrorMessage = error.localizedDescription
+        }
+        clear()
+      } receiveValue: { [unowned self] id in
+        lastSavedPhotoID = id
+      }
+      .store(in: &subscriptions)
+
   }
   
   // MARK: -  Displaying photos picker
@@ -88,9 +133,9 @@ class CollageNeueModel: ObservableObject {
       contentMode: .aspectFill,
       options: nil
     ) { [weak self] image, info in
-      guard let self = self,
-            let image = image,
-            let info = info else { return }
+      guard let self, let image, let info else {
+        return
+      }
       
       if let isThumbnail = info[PHImageResultIsDegradedKey as String] as? Bool, isThumbnail {
         // Skip the thumbnail version of the asset
@@ -98,6 +143,29 @@ class CollageNeueModel: ObservableObject {
       }
       
       // Send the selected image
+      selectedPhotosSubject.send(image)
+      
+      URLSession
+        .shared
+        .dataTaskPublisher(for: URL(string: "url1")!)
+        .flatMap { data, response in
+          URLSession.shared.dataTaskPublisher(for: URL(string: "url2")!)
+        }
+        .flatMap { data, response in
+          URLSession.shared.dataTaskPublisher(for: URL(string: "url3")!)
+        }
+        .sink { completion in
+          switch completion {
+          case .finished:
+            break
+          case .failure(let error):
+            break
+          }
+        } receiveValue: { data, response in
+          
+        }
+        .store(in: &subscriptions)
+
     }
   }
 }

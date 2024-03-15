@@ -50,5 +50,13 @@ extension PHPhotoLibrary {
       callback(newStatus == .authorized)
     }
   }
+  
+  static var isAuthorized: Future<Bool, Never> {
+    Future { promise in
+      Self.fetchAuthorizationStatus { status in
+        promise(.success(status))
+      }
+    }
+  }
 }
 

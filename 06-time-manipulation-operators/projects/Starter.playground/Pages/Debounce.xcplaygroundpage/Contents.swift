@@ -6,6 +6,8 @@ let subject = PassthroughSubject<String, Never>()
 
 /// as the sepcification of debounce, it will emit value after a specific of time between events
 let debounced = subject
+  // debouce emit an event whenever there are no new event after 1.0 seconds since the latest
+  // event
   .debounce(for: .seconds(1.0), scheduler: DispatchQueue.main)
   .share()
 
