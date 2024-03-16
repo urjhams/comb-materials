@@ -23,17 +23,34 @@ example(of: "concurrency") {
 }
 
 example(of: "Type erasure") {
+  print("current subscriptions: \(subscriptions.count)")
+
   let subject = PassthroughSubject<Int, Never>()
   
   /// Turn subject to `AnyPublisher`
   let publisher = subject.eraseToAnyPublisher()
   
-  publisher
-    .sink { print($0) }
-    .store(in: &subscriptions)
+  var cancelable: AnyCancellable?
+  cancelable = publisher
+    .print()
+    .sink { _ in
+      if let cancelable {
+        subscriptions.remove(cancelable)
+      }
+    } receiveValue: {
+      print("emitted value", $0)
+    }
+  
+  cancelable?.store(in: &subscriptions)
   
   /// Since the publisher is type erased, it cannot use send but only the subject could
   subject.send(0)
+  subject.send(1)
+  subject.send(2)
+  print("current subscriptions: \(subscriptions.count)")
+  subject.send(completion: .finished)
+  
+  print("current subscriptions: \(subscriptions.count)")
 }
 
 example(of: "Dynamically adjusting Demand") {
