@@ -39,11 +39,84 @@ struct API {
   /// A shared JSON decoder to use in calls.
   private let decoder = JSONDecoder()
   
-  // <#Add your API code here#>
+  private let apiQueue = DispatchQueue(
+    label: "API",
+    qos: .default,
+    attributes: .concurrent
+  )
   
+  func story(_ id: Int) -> AnyPublisher<Story, Error> {
+    URLSession
+      .shared
+      .dataTaskPublisher(for: EndPoint.story(id).url)
+      .receive(on: apiQueue)
+      .map(\.data)
+      .decode(type: Story.self, decoder: decoder)
+      .catch { _ in Empty<Story, Error>() } // ignore error and return empty
+      .eraseToAnyPublisher()
+  }
+  
+  func mergedStories(ids: [Int]) -> AnyPublisher<Story, Error> {
+    let storyIds = Array(ids.prefix(maxStories))
+    
+    precondition(!storyIds.isEmpty)
+    
+    let initialPublisher = story(storyIds[0])
+    let remainder = Array(storyIds.dropFirst())
+    
+    return remainder.reduce(initialPublisher) { combined, id in
+      combined
+        .merge(with: story(id))
+        .eraseToAnyPublisher()
+    }
+  }
+  
+  func mergedStories(of ids: Int...) -> AnyPublisher<Story, Error> {
+    mergedStories(ids: ids)
+  }
+  
+  func stories() -> AnyPublisher<[Story], Error> {
+    URLSession
+      .shared
+      .dataTaskPublisher(for: EndPoint.stories.url)
+      .receive(on: apiQueue)
+      .map(\.data)
+      .decode(type: [Int].self, decoder: decoder)
+      .mapError { error in
+        switch error {
+        case is URLError:
+          Error.addressUnreachable(EndPoint.stories.url)
+        default:
+          Error.invalidResponse
+        }
+      }
+      .filter { !$0.isEmpty }
+      // since mapping each `mergedStories(ids:)` are Publishers, use flatMap
+      // to flatten them into a single downstream Publisher
+      .flatMap(self.mergedStories(ids:))
+      // use `scan` so we have an accumulator of stories, and keep appending it
+      // whenever there is a new story returned
+      .scan([]) { stories, story in stories + [story] }
+      .map { $0.sorted() }
+      .eraseToAnyPublisher()
+  }
 }
 
-// <#Call the API here#>
+let api = API()
+
+var subscription = Set<AnyCancellable>()
+
+//api.story(999)
+//  .sink { print($0) } receiveValue: { print($0) }
+//  .store(in: &subscription)
+//
+//api.mergedStories(of: 1000, 1001, 1002)
+//  .sink { print($0) } receiveValue: { print($0) }
+//  .store(in: &subscription)
+
+api.stories()
+  .sink { print($0) } receiveValue: { print($0) }
+  .store(in: &subscription)
 
 
 // Run indefinitely.

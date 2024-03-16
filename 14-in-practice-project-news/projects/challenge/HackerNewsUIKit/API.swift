@@ -99,6 +99,7 @@ struct API {
   
   func stories() -> AnyPublisher<[Story], Error> {
     URLSession.shared.dataTaskPublisher(for: EndPoint.stories.url)
+      .receive(on: apiQueue)
       .map { $0.0 }
       .decode(type: [Int].self, decoder: decoder)
       .mapError { error in
