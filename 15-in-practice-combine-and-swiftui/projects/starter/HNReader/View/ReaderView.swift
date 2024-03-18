@@ -37,6 +37,8 @@ struct ReaderView: View {
   @Environment(\.colorScheme) var colorScheme: ColorScheme
   @ObservedObject var model: ReaderViewModel
   @State var presentingSettingsSheet = false
+  @EnvironmentObject var settings: Settings
+  private var subscriptions = Set<AnyCancellable>()
     
   private let timer = Timer
     .publish(every: 10, on: .main, in: .common)
@@ -48,11 +50,12 @@ struct ReaderView: View {
   init(model: ReaderViewModel) {
     self.model = model
   }
-  
-  var body: some View {
-    let filter = "Showing all stories"
     
-    return NavigationView {
+  var body: some View {
+    let filter = settings.keywords.isEmpty ?
+    "Showing all stories" : "Filter: " + settings.keywords.map(\.value).joined(separator: ", ")
+    
+    NavigationView {
       List {
         Section(header: Text(filter).padding(.leading, -10)) {
           ForEach(self.model.stories) { story in
@@ -77,7 +80,6 @@ struct ReaderView: View {
           .onReceive(timer) {
             currentDate = $0
           }
-          // Add timer here
         }.padding()
       }
       .listStyle(PlainListStyle())
