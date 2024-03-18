@@ -102,7 +102,7 @@ struct API {
   
   func stories() -> AnyPublisher<[Story], Error> {
     URLSession.shared.dataTaskPublisher(for: EndPoint.stories.url)
-      .map { $0.0 }
+      .map(\.data)
       .decode(type: [Int].self, decoder: decoder)
       .mapError { error -> Error in
         switch error {
@@ -112,15 +112,9 @@ struct API {
         }
       }
       .filter { !$0.isEmpty }
-      .flatMap { storyIDs in
-        return self.mergedStories(ids: storyIDs)
-      }
-      .scan([], { (stories, story) -> [Story] in
-        return stories + [story]
-      })
-      .map { stories in
-        return stories.sorted()
-      }
+      .flatMap { storyIDs in self.mergedStories(ids: storyIDs) }
+      .scan([]) { (stories, story) -> [Story] in stories + [story] }
+      .map { stories in stories.sorted() }
       .eraseToAnyPublisher()
   }
 }

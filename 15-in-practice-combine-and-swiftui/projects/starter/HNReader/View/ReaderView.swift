@@ -31,12 +31,19 @@
 /// THE SOFTWARE.
 
 import SwiftUI
+import Combine
 
 struct ReaderView: View {
-  var model: ReaderViewModel
-  var presentingSettingsSheet = false
-
-  var currentDate = Date()
+  @Environment(\.colorScheme) var colorScheme: ColorScheme
+  @ObservedObject var model: ReaderViewModel
+  @State var presentingSettingsSheet = false
+    
+  private let timer = Timer
+    .publish(every: 10, on: .main, in: .common)
+    .autoconnect()
+    .eraseToAnyPublisher()
+  
+  @State var currentDate = Date()
   
   init(model: ReaderViewModel) {
     self.model = model
@@ -62,24 +69,32 @@ struct ReaderView: View {
                 print(story)
               }
               .font(.subheadline)
-              .foregroundColor(Color.blue)
+              .foregroundColor(colorScheme == .light ? .blue : .orange)
               .padding(.top, 6)
             }
             .padding()
+          }
+          .onReceive(timer) {
+            currentDate = $0
           }
           // Add timer here
         }.padding()
       }
       .listStyle(PlainListStyle())
-      // Present the Settings sheet here
-      // Display errors here
+      .sheet(isPresented: $presentingSettingsSheet) {
+        SettingsView()
+      }
+      .alert(item: $model.error) { error in
+        Alert(
+          title: Text("Network Error"),
+          message: Text(error.localizedDescription),
+          dismissButton: .cancel()
+        )
+      }
       .navigationBarTitle(Text("\(self.model.stories.count) Stories"))
-      .navigationBarItems(trailing:
-        Button("Settings") {
-          // Set presentingSettingsSheet to true here
-          
-        }
-      )
+      .navigationBarItems(trailing: Button("Settings") {
+        presentingSettingsSheet = true
+      })
     }
   }
 }

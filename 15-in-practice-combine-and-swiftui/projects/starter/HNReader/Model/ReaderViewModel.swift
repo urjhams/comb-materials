@@ -31,12 +31,14 @@
 /// THE SOFTWARE.
 
 import Foundation
+import Combine
 
-class ReaderViewModel {
+class ReaderViewModel: ObservableObject {
+  private var subscriptions = Set<AnyCancellable>()
   private let api = API()
-  private var allStories = [Story]()
+  @Published private var allStories = [Story]()
 
-  var filter = [String]()
+  @Published var filter = [String]()
   
   var stories: [Story] {
     guard !filter.isEmpty else {
@@ -50,5 +52,21 @@ class ReaderViewModel {
       }
   }
   
-  var error: API.Error? = nil
+  @Published var error: API.Error? = nil
+}
+
+extension ReaderViewModel {
+  func fetchStories() {
+    api.stories()
+      .receive(on: DispatchQueue.main)
+      .sink { [weak self] completion in
+        if case .failure(let error) = completion {
+          self?.error = error
+        }
+      } receiveValue: { [weak self] stories in
+        self?.allStories = stories
+        self?.error = nil
+      }
+      .store(in: &subscriptions)
+  }
 }
