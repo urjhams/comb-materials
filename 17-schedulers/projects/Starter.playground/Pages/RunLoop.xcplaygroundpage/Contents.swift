@@ -2,12 +2,40 @@ import Combine
 import SwiftUI
 import PlaygroundSupport
 
+var threadRecorder: ThreadRecorder? = nil
+
 let source = Timer
   .publish(every: 1.0, on: .main, in: .common)
   .autoconnect()
   .scan(0) { (counter, _) in counter + 1 }
 
-<# Add code here #>
+let setupPublisher = { recorder in
+  source
+    /// because the `source` is a Timer that run on main thread, even subscribe on `DispatchQueue.global()` -
+    /// a concurrent queue but  still return the result as the main thread.
+    .subscribe(on: DispatchQueue.global())
+    .recordThread(using: recorder)
+    .receive(on: RunLoop.current) // The RunLoop that associate with the current thread
+    .recordThread(using: recorder)
+    .handleEvents(receiveSubscription: { _ in
+      threadRecorder = recorder   // capture the recorder
+    })
+    .eraseToAnyPublisher()
+}
+
+let view = ThreadRecorderView(
+  title: "Using RunLoop",
+  setup: setupPublisher
+)
+
+PlaygroundPage.current.liveView = UIHostingController(rootView: view)
+
+RunLoop.current.schedule(
+  after: .init(.init(timeIntervalSinceNow: 4.5)),
+  tolerance: .milliseconds(500)
+) {
+  threadRecorder?.subscription?.cancel()
+}
 
 //: [Next](@next)
 /*:

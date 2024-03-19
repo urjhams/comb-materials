@@ -2,7 +2,33 @@ import Combine
 import SwiftUI
 import PlaygroundSupport
 
-<# Add code here #>
+let serialQueue = DispatchQueue(label: "Serial queue")
+let sourceQueue = serialQueue//DispatchQueue.main
+
+let source = PassthroughSubject<Void, Never>()
+
+let subscription = sourceQueue.schedule(
+  after: sourceQueue.now,
+  interval: .seconds(1)
+) {
+  source.send()
+}
+
+let setupPublisher = {
+  source
+    .recordThread(using: $0)
+    /// same queue not the same thread, it will be any free thread in the thread pool
+    .receive(on: serialQueue, options: .init(qos: .userInteractive))
+    .recordThread(using: $0)
+    .eraseToAnyPublisher()
+}
+
+let view = ThreadRecorderView(
+  title: "Using DispatchQueue",
+  setup: setupPublisher
+)
+
+PlaygroundPage.current.liveView = UIHostingController(rootView: view)
 
 //: [Next](@next)
 /*:

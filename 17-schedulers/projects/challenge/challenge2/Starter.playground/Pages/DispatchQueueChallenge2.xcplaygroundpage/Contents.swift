@@ -7,6 +7,8 @@ import PlaygroundSupport
 let sourceQueue = DispatchQueue.main
 let serialQueue = DispatchQueue(label: "Serial queue")
 
+let serialQueue2 = DispatchQueue(label: "Serial queue", target: sourceQueue)
+
 let source = PassthroughSubject<Void, Never>()
 let subscription = sourceQueue.schedule(after: sourceQueue.now, interval: .seconds(1)) {
   source.send()
@@ -14,8 +16,9 @@ let subscription = sourceQueue.schedule(after: sourceQueue.now, interval: .secon
 
 let setupPublisher = { recorder in
   return source
-    .recordThread(using: recorder)
     .receive(on: serialQueue)
+    .recordThread(using: recorder)
+    .receive(on: serialQueue2)
     .recordThread(using: recorder)
     .eraseToAnyPublisher()
 }

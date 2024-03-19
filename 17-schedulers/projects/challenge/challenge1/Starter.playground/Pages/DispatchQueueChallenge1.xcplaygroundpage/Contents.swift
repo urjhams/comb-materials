@@ -22,10 +22,14 @@ let view = ThreadRecorderView(title: "Using DispatchQueue", setup: setupPublishe
 PlaygroundPage.current.liveView = UIHostingController(rootView: view)
 
 // Challenge 1: first method
-
+serialQueue.schedule(after: serialQueue.now.advanced(by: .seconds(4))) {
+  subscription.cancel()
+}
 
 // Challenge 1: second method
-
+serialQueue.asyncAfter(deadline: .now() + 4) {
+  subscription.cancel()
+}
 
 /*:
  Copyright (c) 2023 Kodeco Inc.

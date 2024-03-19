@@ -4,7 +4,21 @@ import PlaygroundSupport
 
 PlaygroundPage.current.needsIndefiniteExecution = true
 
-<# Add code here #>
+let computationPublisher = Publishers.ExpensiveComputation(duration: 3)
+
+let queue = DispatchQueue(label: "serial queue")
+
+let currentThread = Thread.current.number
+
+print("start computation publisher on thread \(currentThread)")
+
+let subscription = computationPublisher
+  .subscribe(on: queue)             // specify the queue as the scheduler
+  .receive(on: DispatchQueue.main)  // specify the recieved scheduler
+  .sink {
+    let thread = Thread.current.number
+    print("Received computation result on thread \(thread): \($0)")
+  }
 
 //: [Next](@next)
 /*:
