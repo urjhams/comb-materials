@@ -4,7 +4,81 @@ import Combine
 
 var subscriptions = Set<AnyCancellable>()
 //: ## Designing your fallible APIs
-<#Add your code here#>
+example(of: "Joke API") {
+  class DadJokes {
+    struct Joke: Decodable {
+      let id: String
+      let joke: String
+    }
+    
+    enum Error: Swift.Error, CustomStringConvertible {
+      case network
+      case jokeDoesntExist(id: String)
+      case parsing
+      case unknown
+      
+      var description: String {
+        switch self {
+        case .network:
+          "Request to API Server failed."
+        case .jokeDoesntExist(let id):
+          "Joke with id \(id) doesn't exist"
+        case .parsing:
+          "Failed parsing response from server"
+        case .unknown:
+          "An unknown error occurred"
+        }
+      }
+    }
+    
+    func getJoke(_ id: String) -> AnyPublisher<Joke, Error> {
+      
+      // id must at least contain one letter
+      guard id.rangeOfCharacter(from: .letters) != nil else {
+        return Fail<Joke, Error>(error: .jokeDoesntExist(id: id))
+          .eraseToAnyPublisher()
+      }
+      
+      let url = URL(string: "https://icanhazdadjoke.com/j/\(id)")!
+      var request = URLRequest(url: url)
+      request.allHTTPHeaderFields = ["Accept": "application/json"]
+      
+      return URLSession.shared
+        .dataTaskPublisher(for: request)
+        .tryMap { data, response -> Data in
+          guard 
+            let object = try? JSONSerialization.jsonObject(with: data),
+            let dictionary = object as? [String: Any],
+            dictionary["status"] as? Int == 404
+          else {
+            return data
+          }
+          
+          throw DadJokes.Error.jokeDoesntExist(id: id)
+        }
+        .decode(type: Joke.self, decoder: JSONDecoder())
+        .mapError { error -> DadJokes.Error in
+          switch error {
+          case is URLError:
+            .network
+          case is DecodingError:
+            .parsing
+          default:
+            error as? DadJokes.Error ?? .unknown
+          }
+        }
+        .eraseToAnyPublisher()
+    }
+  }
+  
+  let api = DadJokes()
+  let jokeId = "9prWnjyImyd"
+  let badJokeID = "123456"
+  
+  api.getJoke(jokeId)
+    .sink { print($0) } receiveValue: { print("Got joke:", $0) }
+    .store(in: &subscriptions)
+}
 //: [Next](@next)
 
 /// Copyright (c) 2023 Kodeco Inc.

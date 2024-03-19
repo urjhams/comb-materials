@@ -4,7 +4,31 @@ import Combine
 
 var subscriptions = Set<AnyCancellable>()
 //:## Mapping errors
-<#Add your code here#>
+example(of: "map vs tryMap") {
+  enum NameError: Error {
+    case tooShort(String)
+    case unknown
+  }
+  
+  Just("Hello")
+    .setFailureType(to: NameError.self)
+//    .map { $0 + "World!" }
+    .tryMap { throw NameError.tooShort($0) }
+    .mapError { $0 as? NameError ?? .unknown }
+    .sink {
+      switch $0 {
+      case .finished:
+        print("Done!")
+      case .failure(.tooShort(let name)):
+        print("\(name) is too short")
+      case .failure(.unknown):
+        print("An unknown error occurred!")
+      }
+    } receiveValue: {
+      print($0)
+    }
+    .store(in: &subscriptions)
+}
 //: [Next](@next)
 
 /// Copyright (c) 2023 Kodeco Inc.
